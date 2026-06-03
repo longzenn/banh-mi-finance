@@ -446,7 +446,14 @@ function initApp() {
   const storedActiveMember = localStorage.getItem('banhmi_active_member');
   if (storedActiveMember) {
     state.activeMember = storedActiveMember;
-    state.currentUserPerspective = storedActiveMember === 'both' ? 'Nong' : storedActiveMember;
+  }
+
+  // Tải người dùng mặc định khi nhập liệu
+  const storedDefaultInputMember = localStorage.getItem('banhmi_default_input_member');
+  if (storedDefaultInputMember) {
+    state.currentUserPerspective = storedDefaultInputMember;
+  } else {
+    state.currentUserPerspective = (state.activeMember && state.activeMember !== 'both') ? state.activeMember : 'Nong';
   }
 
   // Thiết lập mặc định ngày nhập liệu là hôm nay
@@ -1582,6 +1589,7 @@ function changeActiveMember(member) {
 
 function changeCurrentUserPerspective(member) {
   state.currentUserPerspective = member;
+  localStorage.setItem('banhmi_default_input_member', member);
   renderMembersView();
 }
 
@@ -1898,7 +1906,13 @@ function registerEventListeners() {
       const selected = opt.getAttribute('data-dialog-member');
       state.txForm.member = selected;
       document.getElementById('tx-member-display').innerText = selected;
+      
+      // Lưu làm người nhập mặc định của thiết bị này
+      state.currentUserPerspective = selected;
+      localStorage.setItem('banhmi_default_input_member', selected);
+      
       memberPickerDialog.classList.remove('active');
+      renderMembersView();
     });
   });
 
