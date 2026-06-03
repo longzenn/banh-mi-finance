@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bánh Mì - Sổ Thu Chi Chung</title>
+  <!-- Google Fonts: Google Sans -->
+  <link href="https://fonts.cdnfonts.com/css/google-sans" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Container giả lập thiết bị di động trên Desktop -->
+  <div class="phone-container">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <!-- Icon Menu / Settings -->
+        <button id="theme-toggle" class="icon-btn" title="Đổi giao diện Sáng/Tối">
+          <!-- Sun Icon -->
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <!-- Moon Icon -->
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="header-center">
+        <div class="group-dropdown" id="member-dropdown-btn">
+          <span class="group-name">Bánh Mì</span>
+          <span class="member-subtext" id="header-active-member">Nong & Dung ▾</span>
+        </div>
+        <!-- Dropdown menu chọn thành viên nhanh -->
+        <div class="dropdown-menu" id="header-member-menu">
+          <div class="dropdown-title">Đang đăng nhập dưới tên:</div>
+          <button class="dropdown-item active" data-member="both">
+            <span class="avatar-dot both"></span> Cả hai thành viên
+          </button>
+          <button class="dropdown-item" data-member="Nong">
+            <span class="avatar-dot nong"></span> Nong
+          </button>
+          <button class="dropdown-item" data-member="Dung">
+            <span class="avatar-dot dung"></span> Dung
+          </button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Nút Tìm kiếm giao dịch -->
+        <button id="search-btn" class="icon-btn" title="Tìm kiếm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- TRẠNG THÁI SỐ DƯ (Chung cho các View) -->
+    <div class="balance-card">
+      <div class="balance-label">Tổng số dư</div>
+      <div class="balance-amount" id="total-balance">0 đ</div>
+    </div>
+
+    <!-- MAIN VIEWS CONTAINER -->
+    <main class="app-main">
+      
+      <!-- VIEW 1: SỔ GIAO DỊCH (Home/Transactions list) -->
+      <section id="view-transactions" class="app-view active">
+        <!-- Thanh Tìm kiếm ẩn/hiện -->
+        <div class="search-bar-container" id="search-bar-container">
+          <input type="text" id="search-input" placeholder="Tìm tên giao dịch, danh mục, số tiền...">
+          <button id="clear-search-btn">Hủy</button>
+        </div>
+
+        <!-- Danh sách giao dịch -->
+        <div class="transactions-list-container" id="transactions-list">
+          <!-- Sẽ được thêm bằng JS -->
+        </div>
+      </section>
+
+      <!-- VIEW 2: THỐNG KÊ (Reports / Charts) -->
+      <section id="view-report" class="app-view">
+        <!-- Bộ lọc thời gian cho báo cáo -->
+        <div class="time-range-bar">
+          <button class="range-arrow-btn" id="report-prev-range">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="current-range-selector" id="report-range-display-text">Tháng này</div>
+          <button class="range-arrow-btn" id="report-next-range">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+        <!-- Bộ lọc nhanh khoảng thời gian cho báo cáo -->
+        <div class="filter-pills">
+          <button class="pill-btn active" data-range="month">Tháng</button>
+          <button class="pill-btn" data-range="week">Tuần</button>
+          <button class="pill-btn" data-range="day">Ngày</button>
+          <button class="pill-btn" data-range="year">Năm</button>
+          <button class="pill-btn" data-range="all">Tất cả</button>
+        </div>
+
+        <!-- Tabs Chi / Thu -->
+        <div class="report-tabs">
+          <button class="report-tab active" data-report-type="expense" id="report-tab-expense">
+            <div class="report-tab-amount text-expense" id="report-total-expense">- 0 đ</div>
+            <div class="report-tab-label" id="report-count-expense">0 giao dịch</div>
+            <div class="report-tab-title">Chi</div>
+          </button>
+          <button class="report-tab" data-report-type="income" id="report-tab-income">
+            <div class="report-tab-amount text-income" id="report-total-income">+ 0 đ</div>
+            <div class="report-tab-label" id="report-count-income">0 giao dịch</div>
+            <div class="report-tab-title">Thu</div>
+          </button>
+        </div>
+
+        <!-- Biểu đồ Donut SVG -->
+        <div class="chart-container">
+          <div class="donut-chart-wrapper">
+            <svg id="donut-chart" viewBox="0 0 200 200" width="100%" height="100%">
+              <circle cx="100" cy="100" r="70" fill="transparent" stroke="var(--bg-card)" stroke-width="24"></circle>
+            </svg>
+            <div class="donut-center-info">
+              <span class="donut-percent" id="donut-center-percent">0%</span>
+              <span class="donut-label" id="donut-center-label">Chi nhiều nhất</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danh sách cơ cấu danh mục báo cáo -->
+        <div class="report-category-list" id="report-category-list">
+          <!-- Sẽ được thêm bằng JS -->
+        </div>
+      </section>
+
+      <!-- VIEW 3: THÀNH VIÊN (Members) -->
+      <section id="view-members" class="app-view">
+        <div class="section-title-wrapper">
+          <h2 class="section-title">Thành viên nhóm Bánh Mì</h2>
+          <p class="section-desc">Chọn thành viên hoạt động chính hoặc xem chi tiết chi tiêu của từng người.</p>
+        </div>
+
+        <div class="members-cards-container">
+          <!-- Thẻ thành viên Nong -->
+          <div class="member-profile-card" id="card-member-nong">
+            <div class="member-profile-header">
+              <div class="member-avatar avatar-nong">N</div>
+              <div class="member-profile-info">
+                <h3>Nong</h3>
+                <span class="member-status-pill current-active">Đang hoạt động</span>
+              </div>
+            </div>
+            <div class="member-profile-stats">
+              <div class="stat-row">
+                <span>Đã chi:</span>
+                <strong class="text-expense" id="stat-nong-expense">0 đ</strong>
+              </div>
+              <div class="stat-row">
+                <span>Đã thu:</span>
+                <strong class="text-income" id="stat-nong-income">0 đ</strong>
+              </div>
+            </div>
+            <button class="select-member-btn" data-select-member="Nong">Chuyển sang Nong</button>
+          </div>
+
+          <!-- Thẻ thành viên Dung -->
+          <div class="member-profile-card" id="card-member-dung">
+            <div class="member-profile-header">
+              <div class="member-avatar avatar-dung">D</div>
+              <div class="member-profile-info">
+                <h3>Dung</h3>
+                <span class="member-status-pill current-active">Đang hoạt động</span>
+              </div>
+            </div>
+            <div class="member-profile-stats">
+              <div class="stat-row">
+                <span>Đã chi:</span>
+                <strong class="text-expense" id="stat-dung-expense">0 đ</strong>
+              </div>
+              <div class="stat-row">
+                <span>Đã thu:</span>
+                <strong class="text-income" id="stat-dung-income">0 đ</strong>
+              </div>
+            </div>
+            <button class="select-member-btn" data-select-member="Dung">Chuyển sang Dung</button>
+          </div>
+        </div>
+
+        <!-- Thông tin đồng bộ đa tab -->
+        <div class="sync-info-box">
+          <div class="sync-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+            </svg>
+          </div>
+          <div class="sync-text">
+            <h4>Đồng bộ Thời Gian Thực</h4>
+            <p>Mở ứng dụng trên 2 tab hoặc thiết bị khác nhau, mọi cập nhật sẽ đồng bộ tức thời qua BroadcastChannel.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: DANH MỤC & CÀI ĐẶT (Categories & Settings) -->
+      <section id="view-categories" class="app-view">
+        <div class="section-title-wrapper">
+          <h2 class="section-title">Nhãn chi tiêu & Cài đặt</h2>
+          <p class="section-desc">Quản lý nhãn danh mục thu/chi hoặc tùy chỉnh ứng dụng.</p>
+        </div>
+
+        <!-- Cài đặt Đám mây Supabase -->
+        <div class="settings-card">
+          <h3>Đồng bộ đám mây (Supabase)</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.45;">
+            Kết nối với cơ sở dữ liệu Supabase của riêng bạn để đồng bộ giao dịch thời gian thực giữa 2 máy Nong & Dung qua internet.
+          </p>
+          <div id="supabase-config-form" class="category-form">
+            <div class="form-row" style="flex-direction: column; gap: 8px;">
+              <input type="text" id="supabase-url" placeholder="Supabase Project URL (https://...)" autocomplete="off">
+              <input type="password" id="supabase-key" placeholder="Supabase Anon Key" autocomplete="off">
+            </div>
+            <div class="form-row" style="gap: 8px; margin-top: 4px;">
+              <button id="supabase-connect-btn" class="submit-btn green-btn" style="flex: 1;">Kết nối đám mây</button>
+              <button id="supabase-disconnect-btn" class="submit-btn" style="flex: 1; background-color: var(--expense); display: none;">Ngắt kết nối</button>
+            </div>
+          </div>
+          <div id="supabase-status-badge" class="cloud-status-badge offline">
+            <span class="status-dot"></span>
+            <span class="status-text">Đang chạy Ngoại tuyến (Local Only)</span>
+          </div>
+        </div>
+
+        <!-- Quản lý danh mục -->
+        <div class="settings-card">
+          <h3>Thêm danh mục mới</h3>
+          <form id="add-category-form" class="category-form">
+            <div class="form-row">
+              <input type="text" id="new-category-name" placeholder="Tên danh mục (ví dụ: Sách vở)" required>
+              <select id="new-category-type">
+                <option value="expense">Khoản Chi</option>
+                <option value="income">Khoản Thu</option>
+              </select>
+            </div>
+            
+            <div class="color-picker-label">Chọn màu sắc nhãn:</div>
+            <div class="color-presets" id="color-presets-container">
+              <!-- Tạo presets màu bằng JS -->
+            </div>
+
+            <button type="submit" class="submit-btn green-btn">Thêm Danh Mục</button>
+          </form>
+        </div>
+
+        <div class="settings-card">
+          <h3>Danh mục hiện tại</h3>
+          <div class="category-types-tabs">
+            <button class="cat-tab active" data-cat-list-type="expense" id="cat-tab-expense">Chi tiêu</button>
+            <button class="cat-tab" data-cat-list-type="income" id="cat-tab-income">Thu nhập</button>
+          </div>
+          <div class="categories-list-grid" id="categories-manage-list">
+            <!-- Sẽ được thêm bằng JS -->
+          </div>
+        </div>
+
+        <!-- Thông tin ứng dụng -->
+        <div class="app-info-footer">
+          <p>Bánh Mì Finance &copy; 2026</p>
+          <p>Hỗ trợ đa tài khoản • Giao diện tối ưu Mobile • Tông xanh lá cao cấp</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="app-nav">
+      <button class="nav-item active" data-view="view-transactions" id="nav-btn-wallet" title="Ví / Giao dịch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+          <line x1="12" y1="4" x2="12" y2="20"></line>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+        </svg>
+        <span class="nav-label">Sổ Thu Chi</span>
+      </button>
+
+      <button class="nav-item" data-view="view-report" id="nav-btn-report" title="Báo cáo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        <span class="nav-label">Báo Cáo</span>
+      </button>
+
+      <!-- FAB: Button cộng nổi ở giữa -->
+      <button class="nav-item-fab" id="open-add-modal-btn" title="Nhập giao dịch mới">
+        <div class="fab-circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+      </button>
+
+      <button class="nav-item" data-view="view-members" id="nav-btn-members" title="Thành viên">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span class="nav-label">Thành Viên</span>
+      </button>
+
+      <button class="nav-item" data-view="view-categories" id="nav-btn-settings" title="Cài đặt nhãn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+          <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+        <span class="nav-label">Nhãn & Cài đặt</span>
+      </button>
+    </nav>
+
+    <!-- MODAL NHẬP THU / CHI (Slide up screen) -->
+    <div class="add-transaction-modal" id="add-transaction-modal">
+      <div class="modal-header">
+        <button class="modal-close-btn" id="modal-close-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <h2 class="modal-title" id="modal-title-text">Nhập Thu Chi</h2>
+        <button class="modal-save-btn" id="modal-save-btn">Lưu</button>
+      </div>
+
+      <!-- Tabs chọn loại Giao dịch -->
+      <div class="modal-tabs">
+        <button class="modal-tab-btn expense active" id="modal-tab-expense">Chi</button>
+        <button class="modal-tab-btn income" id="modal-tab-income">Thu</button>
+      </div>
+
+      <div class="modal-content">
+        <!-- Vùng Diễn giải -->
+        <div class="input-group description-group">
+          <div class="input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </div>
+          <input type="text" id="tx-description" placeholder="Diễn giải giao dịch..." autocomplete="off">
+        </div>
+
+        <!-- Vùng chọn Ngày và chọn Thành viên thực hiện -->
+        <div class="meta-row">
+          <!-- Chọn ngày -->
+          <div class="meta-picker-item calendar-picker">
+            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="meta-label" id="tx-date-display">Hôm nay (03/06)</span>
+          </div>
+
+          <!-- Chọn thành viên chi/thu -->
+          <div class="meta-picker-item member-picker" id="tx-member-picker-btn">
+            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span class="meta-label" id="tx-member-display">Nong</span>
+          </div>
+        </div>
+
+        <!-- Màn chọn Nhãn (Danh mục) -->
+        <div class="category-selector-container">
+          <div class="section-sub-title">Chọn Nhãn:</div>
+          <div class="category-tags-grid" id="modal-category-grid">
+            <!-- Sẽ được thêm bằng JS -->
+          </div>
+        </div>
+
+        <!-- Bảng hiển thị số tiền và máy tính -->
+        <div class="amount-display-container">
+          <!-- Công thức tính toán nhỏ ở trên nếu có -->
+          <div class="calc-expression-preview" id="calc-preview"></div>
+          <div class="amount-input-row">
+            <span class="amount-val text-expense" id="tx-amount-display">0</span>
+            <span class="amount-currency text-expense" id="tx-amount-currency">đ</span>
+          </div>
+        </div>
+
+        <!-- BÀN PHÍM MÁY TÍNH -->
+        <div class="calculator-keyboard">
+          <!-- Hàng 1 -->
+          <button class="calc-key op-key" data-key="/">÷</button>
+          <button class="calc-key num-key" data-key="7">7</button>
+          <button class="calc-key num-key" data-key="8">8</button>
+          <button class="calc-key num-key" data-key="9">9</button>
+
+          <!-- Hàng 2 -->
+          <button class="calc-key op-key" data-key="*">×</button>
+          <button class="calc-key num-key" data-key="4">4</button>
+          <button class="calc-key num-key" data-key="5">5</button>
+          <button class="calc-key num-key" data-key="6">6</button>
+
+          <!-- Hàng 3 -->
+          <button class="calc-key op-key" data-key="-">-</button>
+          <button class="calc-key num-key" data-key="1">1</button>
+          <button class="calc-key num-key" data-key="2">2</button>
+          <button class="calc-key num-key" data-key="3">3</button>
+
+          <!-- Hàng 4 -->
+          <button class="calc-key op-key" data-key="+">+</button>
+          <button class="calc-key num-key triple-zero" data-key="000">000</button>
+          <button class="calc-key num-key" data-key="0">0</button>
+          <button class="calc-key backspace-key" data-key="backspace">
+            <!-- Icon Backspace -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+              <line x1="18" y1="9" x2="12" y2="15"></line>
+              <line x1="12" y1="9" x2="18" y2="15"></line>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CONTEXT MENU / BOTTOM SHEET CHO HÀNH ĐỘNG SỬA/XÓA -->
+    <div class="bottom-sheet-overlay" id="action-sheet-overlay">
+      <div class="bottom-sheet" id="action-sheet">
+        <div class="bottom-sheet-bar"></div>
+        <div class="bottom-sheet-header">
+          <div class="sheet-tx-info">
+            <h4 id="sheet-tx-description">Tên giao dịch</h4>
+            <p id="sheet-tx-meta">Nhãn • 00/00/2026 • Người tạo</p>
+          </div>
+          <div class="sheet-tx-amount" id="sheet-tx-amount">0 đ</div>
+        </div>
+        <div class="bottom-sheet-content">
+          <button class="sheet-action-btn edit-btn" id="sheet-edit-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Sửa giao dịch
+          </button>
+          <button class="sheet-action-btn delete-btn" id="sheet-delete-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            Xóa giao dịch
+          </button>
+          <button class="sheet-action-btn cancel-btn" id="sheet-cancel-btn">Hủy bỏ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM SHEET CHỌN NGÀY CÁ NHÂN HÓA (CALENDAR SHEET) -->
+    <div class="bottom-sheet-overlay" id="calendar-sheet-overlay">
+      <div class="bottom-sheet calendar-sheet">
+        <div class="bottom-sheet-bar"></div>
+        <div class="calendar-sheet-content">
+          <!-- Hàng chọn nhanh -->
+          <div class="calendar-quick-row">
+            <button class="calendar-quick-pill" id="cal-btn-yesterday">Hôm qua</button>
+            <button class="calendar-quick-pill" id="cal-btn-today">Hôm nay</button>
+          </div>
+
+          <!-- Tiêu đề tháng năm và điều hướng -->
+          <div class="calendar-month-header">
+            <button class="month-nav-arrow" id="cal-prev-month-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <h3 class="calendar-month-title" id="calendar-month-year-text">Tháng 06/2026</h3>
+            <button class="month-nav-arrow" id="cal-next-month-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Các ngày trong tuần -->
+          <div class="calendar-weekdays-row">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          </div>
+
+          <!-- Lưới các ngày trong tháng -->
+          <div class="calendar-days-grid" id="calendar-days-grid">
+            <!-- Sẽ được điền động bằng JS -->
+          </div>
+
+          <!-- Nút hủy đóng sheet -->
+          <button class="sheet-action-btn cancel-btn" id="calendar-cancel-btn" style="margin-top: 16px;">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIALOG THÀNH VIÊN Ở TRANG NHẬP LIỆU -->
+    <div class="dialog-overlay" id="member-picker-dialog-overlay">
+      <div class="dialog-box">
+        <h3 class="dialog-title">Ai trả khoản này?</h3>
+        <div class="dialog-content">
+          <button class="dialog-member-option" data-dialog-member="Nong">
+            <span class="member-avatar avatar-nong size-sm">N</span> Nong
+          </button>
+          <button class="dialog-member-option" data-dialog-member="Dung">
+            <span class="member-avatar avatar-dung size-sm">D</span> Dung
+          </button>
+        </div>
+        <div class="dialog-footer">
+          <button class="dialog-cancel-btn" id="member-picker-dialog-cancel">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
