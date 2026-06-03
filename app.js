@@ -162,7 +162,10 @@ let state = {
     url: '',
     key: ''
   },
-  isCloudActive: false
+  isCloudActive: false,
+  
+  // Trạng thái bộ lọc tháng trên trang chủ
+  homeMonthOffset: 0
 };
 
 // Khởi tạo BroadcastChannel để đồng bộ đa tab
@@ -655,8 +658,16 @@ function getFilteredTransactions(rangeType, offset, isReport = false) {
   let txs = [];
   
   if (!isReport) {
-    // Trang chủ hiển thị toàn bộ lịch sử thu chi không giới hạn thời gian
-    txs = [...state.transactions];
+    if (state.searchActive && state.searchQuery.trim() !== '') {
+      txs = [...state.transactions];
+    } else {
+      const { start, end } = getDateRange('month', state.homeMonthOffset);
+      txs = state.transactions.filter(tx => {
+        const txDate = new Date(tx.date);
+        txDate.setHours(0,0,0,0);
+        return txDate >= start && txDate <= end;
+      });
+    }
   } else {
     // Trang báo cáo thống kê lọc theo thời gian được chọn
     const { start, end } = getDateRange(rangeType, offset);
@@ -689,6 +700,47 @@ function getFilteredTransactions(rangeType, offset, isReport = false) {
     if (dateDiff !== 0) return dateDiff;
     return b.id.localeCompare(a.id);
   });
+}
+
+function getHomeMonthLabel(offset) {
+  const date = new Date();
+  date.setMonth(date.getMonth() + offset);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  
+  if (offset === 0) {
+    return 'Tháng<br>này';
+  } else if (offset === -1) {
+    return 'Tháng<br>trước';
+  } else {
+    return `Tháng<br>${mm}/${yyyy}`;
+  }
+}
+
+function renderHomeSummary() {
+  const { start, end } = getDateRange('month', state.homeMonthOffset);
+  
+  let monthTxs = state.transactions.filter(tx => {
+    const txDate = new Date(tx.date);
+    txDate.setHours(0,0,0,0);
+    return txDate >= start && txDate <= end;
+  });
+  
+  if (state.activeMember !== 'both') {
+    monthTxs = monthTxs.filter(tx => tx.member === state.activeMember);
+  }
+
+  let totalExpense = 0;
+  let totalIncome = 0;
+
+  monthTxs.forEach(tx => {
+    if (tx.type === 'expense') totalExpense += tx.amount;
+    else totalIncome += tx.amount;
+  });
+
+  document.getElementById('home-month-display').innerHTML = getHomeMonthLabel(state.homeMonthOffset);
+  document.getElementById('home-total-expense').innerText = formatMoney(totalExpense);
+  document.getElementById('home-total-income').innerText = formatMoney(totalIncome);
 }
 
 // ==========================================================================
@@ -778,6 +830,7 @@ function setCenterToLargest(categoryData, total) {
 
 function renderAll() {
   renderHeaderAndBalance();
+  renderHomeSummary();
   renderTransactionsList();
   renderReportView();
   renderMembersView();
@@ -1641,6 +1694,19 @@ function registerEventListeners() {
       disconnectSupabase();
       alert('Đã ngắt kết nối đám mây, dữ liệu hiện tại quay lại lưu ngoại tuyến.');
     }
+  });
+
+  // --- ĐIỀU HƯỚNG THÁNG TRÊN TRANG CHỦ ---
+  document.getElementById('home-prev-month').addEventListener('click', () => {
+    state.homeMonthOffset--;
+    renderHomeSummary();
+    renderTransactionsList();
+  });
+
+  document.getElementById('home-next-month').addEventListener('click', () => {
+    state.homeMonthOffset++;
+    renderHomeSummary();
+    renderTransactionsList();
   });
 
   // --- DROPDOWN CHỌN NHANH THÀNH VIÊN TRÊN HEADER ---

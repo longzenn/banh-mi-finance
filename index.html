@@ -69,8 +69,8 @@
 
     <!-- TRẠNG THÁI SỐ DƯ (Chung cho các View) -->
     <div class="balance-card">
-      <div class="balance-label">Tổng số dư</div>
-      <div class="balance-amount" id="total-balance">0 đ</div>
+      <span class="balance-label">Số dư:</span>
+      <span class="balance-amount" id="total-balance">0 đ</span>
     </div>
 
     <!-- MAIN VIEWS CONTAINER -->
@@ -78,6 +78,27 @@
       
       <!-- VIEW 1: SỔ GIAO DỊCH (Home/Transactions list) -->
       <section id="view-transactions" class="app-view active">
+        <!-- Thanh thống kê nhanh trong tháng (Month Summary Bar) -->
+        <div class="home-summary-bar">
+          <div class="month-selector">
+            <button class="month-arrow-btn" id="home-prev-month">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="month-label" id="home-month-display">Tháng<br>này</div>
+            <button class="month-arrow-btn" id="home-next-month">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+          <div class="summary-col">
+            <div class="summary-col-label">Chi</div>
+            <div class="summary-col-val text-expense" id="home-total-expense">0 đ</div>
+          </div>
+          <div class="summary-col">
+            <div class="summary-col-label">Thu</div>
+            <div class="summary-col-val text-income" id="home-total-income">0 đ</div>
+          </div>
+        </div>
+
         <!-- Thanh Tìm kiếm ẩn/hiện -->
         <div class="search-bar-container" id="search-bar-container">
           <input type="text" id="search-input" placeholder="Tìm tên giao dịch, danh mục, số tiền...">
