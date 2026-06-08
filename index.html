@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Bánh Mì - Sổ Thu Chi Chung</title>
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2e7d32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- Google Fonts: Google Sans -->
   <link href="https://fonts.cdnfonts.com/css/google-sans" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -260,6 +266,7 @@
             <span class="status-dot"></span>
             <span class="status-text">Đang chạy Ngoại tuyến (Local Only)</span>
           </div>
+          <div id="supabase-queue-status" class="queue-status-info" style="display: none;"></div>
         </div>
 
         <!-- Quản lý danh mục -->
@@ -553,6 +560,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+          .catch((err) => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

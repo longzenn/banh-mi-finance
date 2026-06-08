@@ -280,46 +280,118 @@ function subscribeRealtime() {
     .subscribe();
 }
 
-// Tải dữ liệu từ Supabase về
+// Tải và đồng bộ dữ liệu từ Supabase về
 async function syncDataFromCloud() {
   if (!supabaseClient) return;
   
-  // 1. Tải danh mục
-  const { data: cloudCats, error: catError } = await supabaseClient.from('categories').select('*');
-  if (catError) {
-    console.error('Lỗi tải categories:', catError);
-    return;
-  }
+  setCloudStatus('connecting');
   
-  // 2. Tải giao dịch
-  const { data: cloudTxs, error: txError } = await supabaseClient.from('transactions').select('*');
-  if (txError) {
-    console.error('Lỗi tải transactions:', txError);
-    return;
-  }
-  
-  // Nếu cả hai bảng đều trống, thực hiện migrate dữ liệu local lên cloud
-  if (cloudCats.length === 0 && cloudTxs.length === 0) {
-    console.log('Phát hiện database trống, tiến hành đồng bộ dữ liệu local lên cloud...');
-    await migrateLocalToCloud();
-  } else {
-    // Cập nhật danh mục
-    state.categories = cloudCats.map(c => ({ name: c.name, type: c.type, color: c.color }));
-    localStorage.setItem('banhmi_categories', JSON.stringify(state.categories));
+  try {
+    // 1. Đẩy các thay đổi ngoại tuyến lên cloud (Push)
     
-    // Cập nhật giao dịch
-    state.transactions = cloudTxs.map(t => ({
-      id: t.id,
-      description: t.description,
-      amount: Number(t.amount),
-      type: t.type,
-      date: t.date,
-      category: t.category,
-      member: t.member
-    }));
-    localStorage.setItem('banhmi_transactions', JSON.stringify(state.transactions));
+    // a. Xử lý xóa giao dịch ngoại tuyến
+    const deletedTxIds = getDeletedTxIds();
+    for (const id of deletedTxIds) {
+      const { error } = await supabaseClient.from('transactions').delete().eq('id', id);
+      if (!error) {
+        dequeueDeletedTx(id);
+      }
+    }
     
-    renderAll();
+    // b. Xử lý xóa danh mục ngoại tuyến
+    const deletedCats = getDeletedCats();
+    for (const cat of deletedCats) {
+      const { error } = await supabaseClient.from('categories').delete().eq('name', cat.name).eq('type', cat.type);
+      if (!error) {
+        dequeueDeletedCat(cat.name, cat.type);
+      }
+    }
+    
+    // c. Xử lý thêm/sửa giao dịch ngoại tuyến
+    const unsyncedTxIds = getUnsyncedTxIds();
+    for (const id of unsyncedTxIds) {
+      const tx = state.transactions.find(t => t.id === id);
+      if (tx) {
+        const { error } = await supabaseClient.from('transactions').upsert(tx);
+        if (!error) {
+          dequeueUnsyncedTx(id);
+        }
+      } else {
+        dequeueUnsyncedTx(id);
+      }
+    }
+    
+    // d. Xử lý thêm danh mục ngoại tuyến
+    const unsyncedCats = getUnsyncedCats();
+    for (const cat of unsyncedCats) {
+      const existsInLocal = state.categories.find(c => c.name === cat.name && c.type === cat.type);
+      if (existsInLocal) {
+        const { error } = await supabaseClient.from('categories').upsert(cat);
+        if (!error) {
+          dequeueUnsyncedCat(cat.name, cat.type);
+        }
+      } else {
+        dequeueUnsyncedCat(cat.name, cat.type);
+      }
+    }
+    
+    // 2. Tải dữ liệu mới nhất từ cloud về (Pull)
+    const { data: cloudCats, error: catError } = await supabaseClient.from('categories').select('*');
+    if (catError) throw catError;
+    
+    const { data: cloudTxs, error: txError } = await supabaseClient.from('transactions').select('*');
+    if (txError) throw txError;
+    
+    // Nếu cả hai bảng đều trống, thực hiện migrate dữ liệu local lên cloud
+    if (cloudCats.length === 0 && cloudTxs.length === 0) {
+      console.log('Phát hiện database trống, tiến hành đồng bộ dữ liệu local lên cloud...');
+      await migrateLocalToCloud();
+    } else {
+      // 3. Hợp nhất dữ liệu đám mây với các phần tử cục bộ chưa kịp đồng bộ (Merge)
+      
+      // Merge Categories:
+      let mergedCats = cloudCats.map(c => ({ name: c.name, type: c.type, color: c.color }));
+      const remainingUnsyncedCats = getUnsyncedCats();
+      remainingUnsyncedCats.forEach(uc => {
+        if (!mergedCats.some(c => c.name === uc.name && c.type === uc.type)) {
+          mergedCats.push(uc);
+        }
+      });
+      const remainingDeletedCats = getDeletedCats();
+      mergedCats = mergedCats.filter(c => !remainingDeletedCats.some(dc => dc.name === c.name && dc.type === c.type));
+      
+      state.categories = mergedCats;
+      localStorage.setItem('banhmi_categories', JSON.stringify(state.categories));
+      
+      // Merge Transactions:
+      let mergedTxs = cloudTxs.map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: Number(t.amount),
+        type: t.type,
+        date: t.date,
+        category: t.category,
+        member: t.member
+      }));
+      const remainingUnsyncedTxIds = getUnsyncedTxIds();
+      remainingUnsyncedTxIds.forEach(id => {
+        const localTx = state.transactions.find(t => t.id === id);
+        if (localTx && !mergedTxs.some(t => t.id === id)) {
+          mergedTxs.push(localTx);
+        }
+      });
+      const remainingDeletedTxIds = getDeletedTxIds();
+      mergedTxs = mergedTxs.filter(t => !remainingDeletedTxIds.includes(t.id));
+      
+      state.transactions = mergedTxs;
+      localStorage.setItem('banhmi_transactions', JSON.stringify(state.transactions));
+      
+      setCloudStatus('online');
+      renderAll();
+    }
+  } catch (err) {
+    console.error('Lỗi khi đồng bộ dữ liệu đám mây:', err);
+    setCloudStatus('offline', 'Không thể kết nối để đồng bộ: ' + err.message);
   }
 }
 
@@ -327,7 +399,7 @@ async function fetchTransactionsFromCloud() {
   if (!supabaseClient) return;
   const { data: cloudTxs, error } = await supabaseClient.from('transactions').select('*');
   if (!error && cloudTxs) {
-    state.transactions = cloudTxs.map(t => ({
+    let mergedTxs = cloudTxs.map(t => ({
       id: t.id,
       description: t.description,
       amount: Number(t.amount),
@@ -336,6 +408,19 @@ async function fetchTransactionsFromCloud() {
       category: t.category,
       member: t.member
     }));
+    
+    const remainingUnsyncedTxIds = getUnsyncedTxIds();
+    remainingUnsyncedTxIds.forEach(id => {
+      const localTx = state.transactions.find(t => t.id === id);
+      if (localTx && !mergedTxs.some(t => t.id === id)) {
+        mergedTxs.push(localTx);
+      }
+    });
+    
+    const remainingDeletedTxIds = getDeletedTxIds();
+    mergedTxs = mergedTxs.filter(t => !remainingDeletedTxIds.includes(t.id));
+    
+    state.transactions = mergedTxs;
     localStorage.setItem('banhmi_transactions', JSON.stringify(state.transactions));
     renderAll();
   }
@@ -345,7 +430,19 @@ async function fetchCategoriesFromCloud() {
   if (!supabaseClient) return;
   const { data: cloudCats, error } = await supabaseClient.from('categories').select('*');
   if (!error && cloudCats) {
-    state.categories = cloudCats.map(c => ({ name: c.name, type: c.type, color: c.color }));
+    let mergedCats = cloudCats.map(c => ({ name: c.name, type: c.type, color: c.color }));
+    
+    const remainingUnsyncedCats = getUnsyncedCats();
+    remainingUnsyncedCats.forEach(uc => {
+      if (!mergedCats.some(c => c.name === uc.name && c.type === uc.type)) {
+        mergedCats.push(uc);
+      }
+    });
+    
+    const remainingDeletedCats = getDeletedCats();
+    mergedCats = mergedCats.filter(c => !remainingDeletedCats.some(dc => dc.name === c.name && dc.type === c.type));
+    
+    state.categories = mergedCats;
     localStorage.setItem('banhmi_categories', JSON.stringify(state.categories));
     renderCategoriesManageView();
     renderModalCategories();
@@ -486,6 +583,7 @@ function initApp() {
 
   // Render giao diện lần đầu
   renderAll();
+  updateSyncQueueUI();
 }
 
 function loadDataFromStorage() {
@@ -495,6 +593,104 @@ function loadDataFromStorage() {
   const storedActiveMember = localStorage.getItem('banhmi_active_member');
   if (storedActiveMember) {
     state.activeMember = storedActiveMember;
+  }
+}
+
+// --- CÁC HÀM QUẢN LÝ HÀNG ĐỢI ĐỒNG BỘ NGOẠI TUYẾN ---
+function getUnsyncedTxIds() {
+  return JSON.parse(localStorage.getItem('banhmi_unsynced_tx_ids')) || [];
+}
+function saveUnsyncedTxIds(ids) {
+  localStorage.setItem('banhmi_unsynced_tx_ids', JSON.stringify(ids));
+  updateSyncQueueUI();
+}
+function enqueueUnsyncedTx(id) {
+  const ids = getUnsyncedTxIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    saveUnsyncedTxIds(ids);
+  }
+}
+function dequeueUnsyncedTx(id) {
+  const ids = getUnsyncedTxIds().filter(x => x !== id);
+  saveUnsyncedTxIds(ids);
+}
+
+function getDeletedTxIds() {
+  return JSON.parse(localStorage.getItem('banhmi_deleted_tx_ids')) || [];
+}
+function saveDeletedTxIds(ids) {
+  localStorage.setItem('banhmi_deleted_tx_ids', JSON.stringify(ids));
+  updateSyncQueueUI();
+}
+function enqueueDeletedTx(id) {
+  const ids = getDeletedTxIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    saveDeletedTxIds(ids);
+  }
+  dequeueUnsyncedTx(id);
+}
+function dequeueDeletedTx(id) {
+  const ids = getDeletedTxIds().filter(x => x !== id);
+  saveDeletedTxIds(ids);
+}
+
+function getUnsyncedCats() {
+  return JSON.parse(localStorage.getItem('banhmi_unsynced_cats')) || [];
+}
+function saveUnsyncedCats(cats) {
+  localStorage.setItem('banhmi_unsynced_cats', JSON.stringify(cats));
+  updateSyncQueueUI();
+}
+function enqueueUnsyncedCat(name, type, color) {
+  const cats = getUnsyncedCats();
+  if (!cats.some(c => c.name === name && c.type === type)) {
+    cats.push({ name, type, color });
+    saveUnsyncedCats(cats);
+  }
+}
+function dequeueUnsyncedCat(name, type) {
+  const cats = getUnsyncedCats().filter(c => !(c.name === name && c.type === type));
+  saveUnsyncedCats(cats);
+}
+
+function getDeletedCats() {
+  return JSON.parse(localStorage.getItem('banhmi_deleted_cats')) || [];
+}
+function saveDeletedCats(cats) {
+  localStorage.setItem('banhmi_deleted_cats', JSON.stringify(cats));
+  updateSyncQueueUI();
+}
+function enqueueDeletedCat(name, type) {
+  const cats = getDeletedCats();
+  if (!cats.some(c => c.name === name && c.type === type)) {
+    cats.push({ name, type });
+    saveDeletedCats(cats);
+  }
+  dequeueUnsyncedCat(name, type);
+}
+function dequeueDeletedCat(name, type) {
+  const cats = getDeletedCats().filter(c => !(c.name === name && c.type === type));
+  saveDeletedCats(cats);
+}
+
+function updateSyncQueueUI() {
+  const unsyncedTxs = getUnsyncedTxIds().length;
+  const deletedTxs = getDeletedTxIds().length;
+  const unsyncedCats = getUnsyncedCats().length;
+  const deletedCats = getDeletedCats().length;
+  
+  const totalPending = unsyncedTxs + deletedTxs + unsyncedCats + deletedCats;
+  const queueStatusEl = document.getElementById('supabase-queue-status');
+  
+  if (!queueStatusEl) return;
+  
+  if (totalPending > 0) {
+    queueStatusEl.innerText = `Chờ đồng bộ: ${unsyncedTxs + deletedTxs} giao dịch, ${unsyncedCats + deletedCats} nhãn`;
+    queueStatusEl.style.display = 'block';
+  } else {
+    queueStatusEl.style.display = 'none';
   }
 }
 
@@ -1522,17 +1718,17 @@ function saveTransaction() {
         member: state.txForm.member
       };
 
+      // Đưa vào hàng đợi ngoại tuyến
+      enqueueUnsyncedTx(state.txForm.id);
+
       // ĐỒNG BỘ SUPABASE (SỬA)
       if (state.isCloudActive && supabaseClient) {
-        supabaseClient.from('transactions').update({
-          description: desc,
-          amount: amountToSave,
-          type: state.txForm.type,
-          date: dateVal,
-          category: state.txForm.category,
-          member: state.txForm.member
-        }).eq('id', state.txForm.id).then(({ error }) => {
-          if (error) console.error('Lỗi cập nhật transaction trên cloud:', error);
+        supabaseClient.from('transactions').upsert(state.transactions[index]).then(({ error }) => {
+          if (!error) {
+            dequeueUnsyncedTx(state.txForm.id);
+          } else {
+            console.error('Lỗi cập nhật transaction trên cloud:', error);
+          }
         });
       }
     }
@@ -1549,10 +1745,17 @@ function saveTransaction() {
     };
     state.transactions.push(newTx);
 
+    // Đưa vào hàng đợi ngoại tuyến
+    enqueueUnsyncedTx(newTx.id);
+
     // ĐỒNG BỘ SUPABASE (THÊM)
     if (state.isCloudActive && supabaseClient) {
       supabaseClient.from('transactions').insert([newTx]).then(({ error }) => {
-        if (error) console.error('Lỗi thêm transaction trên cloud:', error);
+        if (!error) {
+          dequeueUnsyncedTx(newTx.id);
+        } else {
+          console.error('Lỗi thêm transaction trên cloud:', error);
+        }
       });
     }
   }
@@ -1571,10 +1774,17 @@ function deleteTransaction(txId) {
     state.transactions = state.transactions.filter(t => t.id !== txId);
     saveAndSync();
 
+    // Đưa vào hàng đợi xóa ngoại tuyến
+    enqueueDeletedTx(txId);
+
     // ĐỒNG BỘ SUPABASE (XÓA)
     if (state.isCloudActive && supabaseClient) {
       supabaseClient.from('transactions').delete().eq('id', txId).then(({ error }) => {
-        if (error) console.error('Lỗi xóa transaction trên cloud:', error);
+        if (!error) {
+          dequeueDeletedTx(txId);
+        } else {
+          console.error('Lỗi xóa transaction trên cloud:', error);
+        }
       });
     }
 
@@ -1646,10 +1856,17 @@ function addCategory(name, type, color) {
   state.categories.push({ name, type, color });
   saveAndSync();
 
+  // Đưa vào hàng đợi ngoại tuyến
+  enqueueUnsyncedCat(name, type, color);
+
   // ĐỒNG BỘ SUPABASE (THÊM CATEGORY)
   if (state.isCloudActive && supabaseClient) {
     supabaseClient.from('categories').insert([{ name, type, color }]).then(({ error }) => {
-      if (error) console.error('Lỗi thêm category trên cloud:', error);
+      if (!error) {
+        dequeueUnsyncedCat(name, type);
+      } else {
+        console.error('Lỗi thêm category trên cloud:', error);
+      }
     });
   }
 
@@ -1669,10 +1886,17 @@ function deleteCategory(name, type) {
     state.categories = state.categories.filter(c => !(c.name === name && c.type === type));
     saveAndSync();
 
+    // Đưa vào hàng đợi xóa ngoại tuyến
+    enqueueDeletedCat(name, type);
+
     // ĐỒNG BỘ SUPABASE (XÓA CATEGORY)
     if (state.isCloudActive && supabaseClient) {
       supabaseClient.from('categories').delete().eq('name', name).eq('type', type).then(({ error }) => {
-        if (error) console.error('Lỗi xóa category trên cloud:', error);
+        if (!error) {
+          dequeueDeletedCat(name, type);
+        } else {
+          console.error('Lỗi xóa category trên cloud:', error);
+        }
       });
     }
 
@@ -2056,6 +2280,13 @@ function registerEventListeners() {
     });
   });
 
+  // Lắng nghe sự kiện online để tự động đồng bộ hàng đợi
+  window.addEventListener('online', () => {
+    console.log('Thiết bị đã kết nối mạng trở lại! Đang tiến hành đồng bộ hàng đợi...');
+    if (state.isCloudActive && supabaseClient) {
+      syncDataFromCloud();
+    }
+  });
 }
 
 // ==========================================================================

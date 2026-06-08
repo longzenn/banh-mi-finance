@@ -2137,3 +2137,14 @@ body.dark-theme .cloud-status-badge.connecting .status-dot {
   font-size: 0.95rem;
   font-weight: 700;
 }
+
+/* OFFLINE SYNC QUEUE STATUS INFO */
+.queue-status-info {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0 4px;
+  line-height: 1.35;
+}
