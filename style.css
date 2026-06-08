@@ -285,8 +285,6 @@ body {
   align-items: baseline;
   gap: 6px;
   padding: 0 16px 14px 16px;
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
   z-index: 9;
   transition: background-color 0.3s ease;
@@ -1517,8 +1515,6 @@ body.dark-theme .report-cat-tx-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-height: 120px;
-  overflow-y: auto;
 }
 
 .modal-cat-tag {
