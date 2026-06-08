@@ -1053,27 +1053,69 @@ function renderReportView() {
     const amountStr = (state.reportType === 'expense' ? '-' : '+') + item.amount.toLocaleString('en-US') + ' đ';
     const amountClass = state.reportType === 'expense' ? 'text-expense' : 'text-income';
 
+    // Lọc lấy các giao dịch chi tiết thuộc danh mục này trong kỳ báo cáo
+    const txsInCat = filteredTxsByType.filter(tx => tx.category === item.name);
+    let txsHtml = '';
+    
+    txsInCat.forEach(tx => {
+      const d = new Date(tx.date);
+      const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const txAmountFormatted = (tx.type === 'expense' ? '-' : '+') + tx.amount.toLocaleString('en-US') + ' đ';
+      
+      txsHtml += `
+        <div class="report-cat-tx-row">
+          <div class="report-cat-tx-left">
+            <span class="report-cat-tx-desc">${tx.description}</span>
+            <span class="report-cat-tx-meta">${dateStr} • ${tx.member}</span>
+          </div>
+          <div class="report-cat-tx-amount ${amountClass}">${txAmountFormatted}</div>
+        </div>
+      `;
+    });
+
     html += `
       <div class="report-cat-item">
-        <div class="report-cat-header">
-          <div class="report-cat-name-group">
-            <span class="report-cat-color-dot" style="background-color: ${item.color};"></span>
-            <span class="report-cat-name">${item.name}</span>
-            <span class="report-cat-count">${item.count}</span>
+        <div class="report-cat-header-wrapper">
+          <div class="report-cat-header">
+            <div class="report-cat-name-group">
+              <span class="report-cat-color-dot" style="background-color: ${item.color};"></span>
+              <span class="report-cat-name">${item.name}</span>
+              <span class="report-cat-count">${item.count}</span>
+            </div>
+            <div class="report-cat-amount-group">
+              <span class="report-cat-amount ${amountClass}">${amountStr}</span>
+              <span class="report-cat-percent">(${percent}%)</span>
+              <span class="report-cat-chevron">▾</span>
+            </div>
           </div>
-          <div class="report-cat-amount-group">
-            <span class="report-cat-amount ${amountClass}">${amountStr}</span>
-            <span class="report-cat-percent">(${percent}%)</span>
+          <div class="report-cat-progress-bg">
+            <div class="report-cat-progress-fill" style="width: ${percent}%; background-color: ${item.color};"></div>
           </div>
         </div>
-        <div class="report-cat-progress-bg">
-          <div class="report-cat-progress-fill" style="width: ${percent}%; background-color: ${item.color};"></div>
+        <div class="report-cat-txs-list" style="display: none;">
+          ${txsHtml}
         </div>
       </div>
     `;
   });
 
   listContainer.innerHTML = html;
+
+  // Đăng ký sự kiện click mở rộng danh mục để xem các mục thu chi chi tiết
+  listContainer.querySelectorAll('.report-cat-item').forEach(card => {
+    card.addEventListener('click', () => {
+      const txsListEl = card.querySelector('.report-cat-txs-list');
+      const isVisible = txsListEl.style.display === 'block';
+
+      if (isVisible) {
+        txsListEl.style.display = 'none';
+        card.classList.remove('expanded');
+      } else {
+        txsListEl.style.display = 'block';
+        card.classList.add('expanded');
+      }
+    });
+  });
 }
 
 // Render View Thành Viên

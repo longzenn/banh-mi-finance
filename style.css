@@ -561,9 +561,8 @@ body {
   font-weight: 600;
   font-size: 0.95rem;
   color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .tx-meta-row {
@@ -756,6 +755,76 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.report-cat-item:active {
+  transform: scale(0.99);
+}
+
+.report-cat-chevron {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  margin-left: 6px;
+}
+
+.report-cat-item.expanded .report-cat-chevron {
+  transform: rotate(180deg);
+}
+
+.report-cat-txs-list {
+  margin-top: 12px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-cat-tx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+body.dark-theme .report-cat-tx-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.report-cat-tx-row:last-child {
+  border-bottom: none;
+}
+
+.report-cat-tx-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  padding-right: 12px;
+}
+
+.report-cat-tx-desc {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.report-cat-tx-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.report-cat-tx-amount {
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .report-cat-header {
