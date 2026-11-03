@@ -280,6 +280,34 @@ function subscribeRealtime() {
     .subscribe();
 }
 
+// Tải TOÀN BỘ giao dịch từ cloud theo từng trang 1000 dòng.
+// Supabase (PostgREST) mặc định chỉ trả tối đa 1000 dòng cho mỗi request select,
+// nên nếu chỉ gọi select('*') một lần thì các giao dịch vượt quá 1000 dòng sẽ bị
+// cắt mất một cách âm thầm (không báo lỗi), khiến giao dịch mới thêm không hiển
+// thị trên app dù đã lưu thành công vào database.
+async function fetchAllTransactionsFromCloud() {
+  const PAGE_SIZE = 1000;
+  let allRows = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabaseClient
+      .from('transactions')
+      .select('*')
+      .order('date', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    allRows = allRows.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 // Tải và đồng bộ dữ liệu từ Supabase về
 async function syncDataFromCloud() {
   if (!supabaseClient) return;
@@ -339,8 +367,7 @@ async function syncDataFromCloud() {
     const { data: cloudCats, error: catError } = await supabaseClient.from('categories').select('*');
     if (catError) throw catError;
     
-    const { data: cloudTxs, error: txError } = await supabaseClient.from('transactions').select('*');
-    if (txError) throw txError;
+    const cloudTxs = await fetchAllTransactionsFromCloud();
     
     // Nếu cả hai bảng đều trống, thực hiện migrate dữ liệu local lên cloud
     if (cloudCats.length === 0 && cloudTxs.length === 0) {
@@ -397,8 +424,11 @@ async function syncDataFromCloud() {
 
 async function fetchTransactionsFromCloud() {
   if (!supabaseClient) return;
-  const { data: cloudTxs, error } = await supabaseClient.from('transactions').select('*');
-  if (!error && cloudTxs) {
+  const cloudTxs = await fetchAllTransactionsFromCloud().catch((err) => {
+    console.error('Lỗi tải giao dịch từ cloud:', err);
+    return null;
+  });
+  if (cloudTxs) {
     let mergedTxs = cloudTxs.map(t => ({
       id: t.id,
       description: t.description,
